@@ -1,629 +1,218 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>법인카드 관리 시스템</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f7;color:#1d1d1f;min-height:100vh}
-.app{max-width:640px;margin:0 auto;padding:1rem}
-h1{font-size:18px;font-weight:600;text-align:center;padding:1rem 0 0.5rem;color:#1d1d1f}
-.subtitle{font-size:13px;color:#86868b;text-align:center;margin-bottom:1.2rem}
+// ================================================
+// 법인카드 관리 시스템 - Google Apps Script 서버
+// ================================================
+// 설치 위치: Google Sheets > 확장 프로그램 > Apps Script
 
-/* 탭 */
-.tab-bar{display:flex;background:#fff;border-radius:12px;padding:4px;gap:4px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
-.tab{flex:1;padding:9px 6px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:#86868b;border-radius:8px;transition:all .15s}
-.tab.active{background:#1d1d1f;color:#fff}
+const SHEET_NAME = 'records';
 
-/* 화면 */
-.screen{display:none}.screen.active{display:block}
-
-/* 카드 */
-.card{background:#fff;border-radius:12px;padding:1.2rem;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
-.section-title{font-size:12px;font-weight:600;color:#86868b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px}
-
-/* 필드 */
-.field{margin-bottom:14px}
-.field label{display:block;font-size:13px;color:#3a3a3c;margin-bottom:5px;font-weight:500}
-.field input,.field select,.field textarea{
-  width:100%;padding:10px 12px;border:1px solid #d2d2d7;border-radius:8px;
-  font-size:15px;background:#fff;color:#1d1d1f;-webkit-appearance:none;
-  transition:border-color .15s
-}
-.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:#0071e3}
-.field textarea{height:72px;resize:none}
-.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-
-/* 버튼 */
-.btn{width:100%;padding:13px;font-size:15px;font-weight:600;border-radius:10px;cursor:pointer;border:none;margin-top:6px;transition:opacity .15s}
-.btn-primary{background:#0071e3;color:#fff}
-.btn-primary:hover{opacity:.85}
-.btn-secondary{background:#f5f5f7;color:#1d1d1f;border:1px solid #d2d2d7;margin-top:8px}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-
-/* 뱃지 */
-.badge{display:inline-block;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
-.badge-ok{background:#e8f9ef;color:#1c7c3e}
-.badge-warn{background:#fff8e6;color:#946800}
-.badge-err{background:#fde8e8;color:#c0392b}
-.badge-blue{background:#e8f0fe;color:#1a56db}
-.badge-gray{background:#f0f0f0;color:#555}
-
-/* 알림박스 */
-.notice{border-radius:8px;padding:10px 14px;font-size:13px;margin-bottom:12px;line-height:1.5}
-.notice-info{background:#e8f0fe;color:#1a56db}
-.notice-warn{background:#fff8e6;color:#946800}
-.notice-err{background:#fde8e8;color:#c0392b}
-
-/* 검색 결과 */
-.search-result{border:1px solid #d2d2d7;border-radius:10px;overflow:hidden;margin-top:10px}
-.search-row{padding:13px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid #f0f0f0}
-.search-row:last-child{border-bottom:none}
-.search-row:hover{background:#f5f5f7}
-.search-name{font-size:14px;font-weight:600;color:#1d1d1f}
-.search-detail{font-size:12px;color:#86868b;margin-top:2px}
-
-/* 고정 필드 */
-.filled-field{padding:10px 12px;background:#f5f5f7;border-radius:8px;font-size:14px;color:#1d1d1f}
-
-/* 완료 화면 */
-.done-box{text-align:center;padding:2.5rem 1rem}
-.done-icon{width:56px;height:56px;background:#e8f9ef;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:24px}
-.done-title{font-size:16px;font-weight:600;color:#1d1d1f}
-.done-sub{font-size:13px;color:#86868b;margin-top:6px}
-
-/* 통계 */
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1rem}
-.stat{background:#fff;border-radius:12px;padding:14px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
-.stat-num{font-size:24px;font-weight:700}
-.stat-lbl{font-size:12px;color:#86868b;margin-top:3px}
-
-/* 목록 행 */
-.list-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
-.list-row:last-child{border-bottom:none}
-.list-name{font-weight:600;color:#1d1d1f;font-size:14px}
-.list-detail{font-size:12px;color:#86868b;margin-top:2px}
-
-/* 로딩 */
-.loading{text-align:center;padding:2rem;color:#86868b;font-size:14px}
-.spinner{display:inline-block;width:20px;height:20px;border:2px solid #d2d2d7;border-top-color:#0071e3;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px;vertical-align:middle}
-@keyframes spin{to{transform:rotate(360deg)}}
-
-/* API 설정 */
-.api-wrap{background:#fff3cd;border-radius:10px;padding:14px;margin-bottom:1rem;font-size:13px;color:#664d03}
-.api-wrap input{width:100%;padding:8px 10px;border:1px solid #d2d2d7;border-radius:6px;font-size:13px;margin-top:8px;background:#fff}
-</style>
-</head>
-<body>
-
-<div class="app">
-  <h1>법인카드 관리 시스템</h1>
-  <p class="subtitle">뇌과학과 공용 법인카드 대여 · 반납 · 지출 신고</p>
-
-  <!-- API URL 설정 (최초 1회) -->
-  <div class="api-wrap" id="api-wrap">
-    ⚙️ Apps Script 배포 URL을 입력하세요 (최초 1회)
-    <input type="text" id="api-url-input" placeholder="https://script.google.com/macros/s/..." value="">
-    <button class="btn btn-primary" style="margin-top:8px;padding:9px" onclick="saveApiUrl()">저장</button>
-  </div>
-
-  <div class="tab-bar">
-    <button class="tab active" onclick="switchTab('step1',this)">1단계<br><span style="font-size:11px;font-weight:400">대여 신청</span></button>
-    <button class="tab" onclick="switchTab('step2',this)">2단계<br><span style="font-size:11px;font-weight:400">반납·지출</span></button>
-    <button class="tab" onclick="switchTab('admin',this)">관리자<br><span style="font-size:11px;font-weight:400">대조</span></button>
-  </div>
-
-  <!-- ======================== 1단계 ======================== -->
-  <div id="screen-step1" class="screen active">
-    <div id="s1-form">
-      <div class="card">
-        <div class="section-title">사용자 정보</div>
-        <div class="field"><label>이름</label><input type="text" id="s1-name" placeholder="홍길동"></div>
-        <div class="field"><label>소속 연구실</label><input type="text" id="s1-lab" placeholder="예: BCS lab"></div>
-      </div>
-      <div class="card">
-        <div class="section-title">카드 정보</div>
-        <div class="field">
-          <label>사용 카드 끝번호 4자리</label>
-          <select id="s1-card">
-            <option value="">선택하세요</option>
-            <option value="7284">7284</option>
-            <option value="1641">1641</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>법인 공인인증서 대여 여부</label>
-          <select id="s1-cert">
-            <option value="">선택하세요</option>
-            <option value="O">O (대여함)</option>
-            <option value="X">X (대여 안 함)</option>
-          </select>
-        </div>
-        <div class="field"><label>대여 일시</label><input type="datetime-local" id="s1-rent"></div>
-      </div>
-      <div id="s1-err" class="notice notice-err" style="display:none"></div>
-      <button class="btn btn-primary" id="s1-btn" onclick="submitStep1()">대여 신청 완료</button>
-    </div>
-
-    <div id="s1-done" class="card done-box" style="display:none">
-      <div class="done-icon">✓</div>
-      <div class="done-title">대여 신청 완료!</div>
-      <div class="done-sub" id="s1-done-sub"></div>
-      <div class="notice notice-info" style="margin-top:1.2rem;text-align:left">
-        카드 반납 후 <strong>2단계 탭</strong>에서 이름과 카드번호로 검색해 반납 일시와 지출 내역을 입력해주세요.
-      </div>
-      <button class="btn btn-secondary" style="width:auto;padding:10px 24px;margin-top:1rem" onclick="resetStep1()">추가 대여 신청</button>
-    </div>
-  </div>
-
-  <!-- ======================== 2단계 ======================== -->
-  <div id="screen-step2" class="screen">
-    <div id="s2-search">
-      <div class="card">
-        <div class="section-title">본인 대여 신청서 검색</div>
-        <div class="row2">
-          <div class="field"><label>이름</label><input type="text" id="s2-sname" placeholder="홍길동"></div>
-          <div class="field">
-            <label>카드 끝번호</label>
-            <select id="s2-scard">
-              <option value="">선택</option>
-              <option value="7284">7284</option>
-              <option value="1641">1641</option>
-            </select>
-          </div>
-        </div>
-        <button class="btn btn-primary" id="s2-search-btn" onclick="searchRecord()">검색</button>
-        <div id="s2-result"></div>
-      </div>
-    </div>
-
-    <div id="s2-form" style="display:none">
-      <div class="card">
-        <div class="section-title">확인된 대여 정보</div>
-        <div class="row2" style="margin-bottom:10px">
-          <div>
-            <div style="font-size:12px;color:#86868b;margin-bottom:4px">이름</div>
-            <div class="filled-field" id="f-name"></div>
-          </div>
-          <div>
-            <div style="font-size:12px;color:#86868b;margin-bottom:4px">소속 연구실</div>
-            <div class="filled-field" id="f-lab"></div>
-          </div>
-        </div>
-        <div class="row2">
-          <div>
-            <div style="font-size:12px;color:#86868b;margin-bottom:4px">카드 끝번호</div>
-            <div class="filled-field" id="f-card"></div>
-          </div>
-          <div>
-            <div style="font-size:12px;color:#86868b;margin-bottom:4px">대여 일시</div>
-            <div class="filled-field" id="f-rent"></div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="section-title">반납 &amp; 지출 내역</div>
-        <div class="field"><label>반납 일시</label><input type="datetime-local" id="s2-return"></div>
-        <div class="field"><label>카드 사용 일자</label><input type="date" id="s2-usedate"></div>
-        <div class="row2">
-          <div class="field"><label>사용 금액 (원)</label><input type="number" id="s2-amount" placeholder="예: 46900"></div>
-          <div class="field"><label>거래처</label><input type="text" id="s2-merchant" placeholder="예: 아이엔서비스"></div>
-        </div>
-        <div class="field"><label>지출 예산 / 과제명</label><input type="text" id="s2-project" placeholder="예: 학위논문연구비"></div>
-      </div>
-      <div id="s2-err" class="notice notice-err" style="display:none"></div>
-      <button class="btn btn-primary" id="s2-btn" onclick="submitStep2()">반납 &amp; 지출 신고 완료</button>
-      <button class="btn btn-secondary" onclick="cancelStep2()">다시 검색</button>
-    </div>
-
-    <div id="s2-done" class="card done-box" style="display:none">
-      <div class="done-icon">✓</div>
-      <div class="done-title">신고 완료!</div>
-      <div class="done-sub" id="s2-done-sub"></div>
-      <button class="btn btn-secondary" style="width:auto;padding:10px 24px;margin-top:1rem" onclick="resetStep2()">다른 건 신고하기</button>
-    </div>
-  </div>
-
-  <!-- ======================== 관리자 ======================== -->
-  <div id="screen-admin" class="screen">
-    <div class="stat-grid">
-      <div class="stat"><div class="stat-num" id="st-total">-</div><div class="stat-lbl">총 대여건</div></div>
-      <div class="stat"><div class="stat-num" id="st-complete" style="color:#1c7c3e">-</div><div class="stat-lbl">신고 완료</div></div>
-      <div class="stat"><div class="stat-num" id="st-pending" style="color:#c0392b">-</div><div class="stat-lbl">미신고</div></div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">포탈 미신청 내역 대조</div>
-      <div class="notice notice-info" style="margin-bottom:12px;font-size:12px">포탈에서 내려받은 엑셀의 사용일자·금액·거래처를 쉼표로 구분해 한 줄씩 붙여넣으세요.</div>
-      <div class="field">
-        <textarea id="portal-input" placeholder="예:&#10;2026-03-10, 46900, 아이엔서비스&#10;2026-03-11, 80000, 동평플푸서비스&#10;2026-03-16, 118700, 우창"></textarea>
-      </div>
-      <button class="btn btn-primary" onclick="runMatch()">대조 실행</button>
-    </div>
-
-    <div class="card" id="result-card" style="display:none">
-      <div class="section-title" style="margin-bottom:14px">대조 결과</div>
-      <div id="match-list"></div>
-      <button class="btn btn-secondary" style="margin-top:10px" onclick="copyUnmatched()">미신고 목록 복사</button>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div class="section-title" style="margin-bottom:0">전체 대여 현황</div>
-        <button onclick="loadAdmin()" style="font-size:12px;color:#0071e3;background:none;border:none;cursor:pointer">새로고침</button>
-      </div>
-      <div id="admin-list"><div class="loading">데이터를 불러오는 중...</div></div>
-    </div>
-  </div>
-</div>
-
-<script>
-// ============================================================
-// 설정
-// ============================================================
-let API_URL = localStorage.getItem('cardApiUrl') || '';
-let selectedRecord = null;
-let allRecords = [];
-let unmatchedPortalItems = [];
-
-function getApiUrl() {
-  return localStorage.getItem('cardApiUrl') || '';
-}
-
-function saveApiUrl() {
-  const url = document.getElementById('api-url-input').value.trim();
-  if (!url) { alert('URL을 입력해주세요.'); return; }
-  localStorage.setItem('cardApiUrl', url);
-  document.getElementById('api-wrap').style.display = 'none';
-  alert('저장되었습니다!');
-}
-
-// 저장된 URL 있으면 입력란 채우고 숨김
-(function init() {
-  const saved = getApiUrl();
-  if (saved) {
-    document.getElementById('api-url-input').value = saved;
-    document.getElementById('api-wrap').style.display = 'none';
+// ------------------------------------------------
+// 공통: 시트 가져오기
+// ------------------------------------------------
+function getSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(SHEET_NAME);
+    sheet.appendRow([
+      'id','name','lab','card','cert',
+      'rent','returnTime','useDate','amount',
+      'merchant','project','step','matched','createdAt'
+    ]);
   }
-})();
-
-// ============================================================
-// 공통 유틸
-// ============================================================
-function fmtDT(v) {
-  if (!v) return '-';
-  const s = String(v);
-  // ISO or datetime-local 형식 모두 처리
-  const d = new Date(s.includes('T') ? s : s.replace(' ', 'T'));
-  if (isNaN(d)) return v;
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-function p(n) { return String(n).padStart(2,'0'); }
-
-async function apiFetch(params) {
-  const url = getApiUrl();
-  if (!url) { alert('Apps Script URL이 설정되지 않았습니다.'); throw new Error('No API URL'); }
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${url}?${qs}`, { redirect: 'follow' });
-  return res.json();
+  return sheet;
 }
 
-async function apiPost(body) {
-  const url = getApiUrl();
-  if (!url) { alert('Apps Script URL이 설정되지 않았습니다.'); throw new Error('No API URL'); }
-  // Apps Script CORS 우회: GET 방식으로 데이터 전송
-  const params = new URLSearchParams({ payload: JSON.stringify(body) }).toString();
-  const res = await fetch(`${url}?${params}`, { redirect: 'follow' });
-  return res.json();
-}
-
-function setLoading(btnId, loading) {
-  const btn = document.getElementById(btnId);
-  if (!btn) return;
-  btn.disabled = loading;
-  btn.innerHTML = loading
-    ? '<span class="spinner"></span>처리 중...'
-    : btn.dataset.label || btn.innerHTML;
-}
-
-// ============================================================
-// 탭 전환
-// ============================================================
-function switchTab(t, el) {
-  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('screen-' + t).classList.add('active');
-  if (t === 'admin') loadAdmin();
-}
-
-// ============================================================
-// 1단계: 대여 신청
-// ============================================================
-async function submitStep1() {
-  const name = document.getElementById('s1-name').value.trim();
-  const lab  = document.getElementById('s1-lab').value.trim();
-  const card = document.getElementById('s1-card').value;
-  const cert = document.getElementById('s1-cert').value;
-  const rent = document.getElementById('s1-rent').value;
-
-  const missing = [];
-  if (!name) missing.push('이름');
-  if (!lab)  missing.push('소속 연구실');
-  if (!card) missing.push('카드 끝번호');
-  if (!cert) missing.push('인증서 대여 여부');
-  if (!rent) missing.push('대여 일시');
-
-  const err = document.getElementById('s1-err');
-  if (missing.length) {
-    err.style.display = 'block';
-    err.textContent = '필수 입력 항목: ' + missing.join(', ');
-    return;
-  }
-  err.style.display = 'none';
-
-  const btn = document.getElementById('s1-btn');
-  btn.disabled = true;
-  btn.textContent = '저장 중...';
+// ------------------------------------------------
+// GET 요청 처리 (데이터 조회 + payload 방식 쓰기)
+// ------------------------------------------------
+function doGet(e) {
+  const action = e.parameter.action;
+  const payload = e.parameter.payload;
 
   try {
-    const res = await apiPost({ action:'step1', name, lab, card, cert, rent });
-    if (res.error) throw new Error(res.error);
-    document.getElementById('s1-form').style.display = 'none';
-    document.getElementById('s1-done').style.display = 'block';
-    document.getElementById('s1-done-sub').textContent =
-      `${name} · 카드 끝번호 ${card} · 대여 ${fmtDT(rent)}`;
-  } catch(e) {
-    err.style.display = 'block';
-    err.textContent = '저장 실패: ' + e.message;
-    btn.disabled = false;
-    btn.textContent = '대여 신청 완료';
-  }
-}
-
-function resetStep1() {
-  document.getElementById('s1-form').style.display = 'block';
-  document.getElementById('s1-done').style.display = 'none';
-  document.getElementById('s1-btn').disabled = false;
-  document.getElementById('s1-btn').textContent = '대여 신청 완료';
-  ['s1-name','s1-lab','s1-rent'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('s1-card').selectedIndex = 0;
-  document.getElementById('s1-cert').selectedIndex = 0;
-}
-
-// ============================================================
-// 2단계: 검색
-// ============================================================
-async function searchRecord() {
-  const name = document.getElementById('s2-sname').value.trim();
-  const card = document.getElementById('s2-scard').value;
-  if (!name || !card) { alert('이름과 카드 끝번호를 모두 입력해주세요.'); return; }
-
-  const btn = document.getElementById('s2-search-btn');
-  btn.disabled = true; btn.textContent = '검색 중...';
-
-  const el = document.getElementById('s2-result');
-  el.innerHTML = '<div class="loading"><span class="spinner"></span>검색 중...</div>';
-
-  try {
-    const res = await apiFetch({ action:'search', name, card });
-    if (res.error) throw new Error(res.error);
-
-    if (!res.results || !res.results.length) {
-      el.innerHTML = `<div class="notice notice-warn" style="margin-top:10px">일치하는 대여 신청서가 없습니다.<br>이름·카드번호를 확인하거나 1단계에서 먼저 대여 신청을 해주세요.</div>`;
-    } else {
-      el.innerHTML = `<div class="search-result">${res.results.map(r => `
-        <div class="search-row" onclick='selectRecord(${JSON.stringify(r).replace(/'/g,"&#39;")})'>
-          <div>
-            <div class="search-name">${r.name} <span style="font-weight:400;color:#86868b">(${r.lab})</span></div>
-            <div class="search-detail">카드 끝번호 ${r.card} · 대여 ${fmtDT(r.rent)}</div>
-          </div>
-          <span class="badge badge-blue">선택</span>
-        </div>`).join('')}</div>`;
+    // payload가 있으면 쓰기 요청 (CORS 우회)
+    if (payload) {
+      const data = JSON.parse(payload);
+      if (data.action === 'step1') return jsonResponse(saveStep1Raw(data), e);
+      if (data.action === 'step2') return jsonResponse(saveStep2Raw(data), e);
+      if (data.action === 'match') return jsonResponse(saveMatchRaw(data), e);
     }
-  } catch(e) {
-    el.innerHTML = `<div class="notice notice-err" style="margin-top:10px">오류: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false; btn.textContent = '검색';
+    if (action === 'search') {
+      return jsonResponse(searchRaw(e.parameter.name, e.parameter.card), e);
+    }
+    if (action === 'all') {
+      return jsonResponse(getAllRecordsRaw(), e);
+    }
+    return jsonResponse({ error: '알 수 없는 action' }, e);
+  } catch(err) {
+    return jsonResponse({ error: err.message }, e);
   }
 }
 
-function selectRecord(r) {
-  selectedRecord = r;
-  document.getElementById('s2-search').style.display = 'none';
-  document.getElementById('s2-form').style.display = 'block';
-  document.getElementById('f-name').textContent = r.name;
-  document.getElementById('f-lab').textContent  = r.lab;
-  document.getElementById('f-card').textContent = r.card;
-  document.getElementById('f-rent').textContent = fmtDT(r.rent);
-}
-
-function cancelStep2() {
-  selectedRecord = null;
-  document.getElementById('s2-search').style.display = 'block';
-  document.getElementById('s2-form').style.display = 'none';
-  document.getElementById('s2-result').innerHTML = '';
-}
-
-// ============================================================
-// 2단계: 반납 & 지출 신고
-// ============================================================
-async function submitStep2() {
-  const returnTime = document.getElementById('s2-return').value;
-  const useDate    = document.getElementById('s2-usedate').value;
-  const amount     = document.getElementById('s2-amount').value;
-  const merchant   = document.getElementById('s2-merchant').value.trim();
-  const project    = document.getElementById('s2-project').value.trim();
-
-  const missing = [];
-  if (!returnTime) missing.push('반납 일시');
-  if (!useDate)    missing.push('사용 일자');
-  if (!amount)     missing.push('사용 금액');
-  if (!merchant)   missing.push('거래처');
-  if (!project)    missing.push('지출 예산/과제명');
-
-  const err = document.getElementById('s2-err');
-  if (missing.length) {
-    err.style.display = 'block';
-    err.textContent = '필수 입력 항목: ' + missing.join(', ');
-    return;
-  }
-  err.style.display = 'none';
-
-  const btn = document.getElementById('s2-btn');
-  btn.disabled = true; btn.textContent = '저장 중...';
-
+// ------------------------------------------------
+// POST 요청 처리 (데이터 저장/수정)
+// ------------------------------------------------
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const action = data.action;
   try {
-    const res = await apiPost({
-      action: 'step2',
-      id: selectedRecord.id,
-      returnTime, useDate, amount: Number(amount), merchant, project
-    });
-    if (res.error) throw new Error(res.error);
-    document.getElementById('s2-form').style.display = 'none';
-    document.getElementById('s2-done').style.display = 'block';
-    document.getElementById('s2-done-sub').textContent =
-      `${useDate} · ${Number(amount).toLocaleString()}원 · ${merchant}`;
-  } catch(e) {
-    err.style.display = 'block';
-    err.textContent = '저장 실패: ' + e.message;
-    btn.disabled = false; btn.textContent = '반납 & 지출 신고 완료';
+    if (action === 'step1') return saveStep1(data);
+    if (action === 'step2') return saveStep2(data);
+    if (action === 'match') return saveMatch(data);
+    return jsonResponse({ error: '알 수 없는 action' });
+  } catch(err) {
+    return jsonResponse({ error: err.message });
   }
 }
 
-function resetStep2() {
-  selectedRecord = null;
-  document.getElementById('s2-search').style.display = 'block';
-  document.getElementById('s2-form').style.display = 'none';
-  document.getElementById('s2-done').style.display = 'none';
-  document.getElementById('s2-sname').value = '';
-  document.getElementById('s2-scard').selectedIndex = 0;
-  document.getElementById('s2-result').innerHTML = '';
-  ['s2-return','s2-usedate','s2-amount','s2-merchant','s2-project']
-    .forEach(id => document.getElementById(id).value = '');
-  document.getElementById('s2-btn').disabled = false;
-  document.getElementById('s2-btn').textContent = '반납 & 지출 신고 완료';
+// ------------------------------------------------
+// 1단계: 대여 신청 저장
+// ------------------------------------------------
+function saveStep1Raw(data) {
+  const sheet = getSheet();
+  const id = Utilities.getUuid();
+  const createdAt = new Date().toISOString();
+  sheet.appendRow([
+    id,
+    data.name,
+    data.lab,
+    data.card,
+    data.cert,
+    data.rent,
+    '',        // returnTime
+    '',        // useDate
+    '',        // amount
+    '',        // merchant
+    '',        // project
+    1,         // step
+    false,     // matched
+    createdAt
+  ]);
+  return { success: true, id: id };
 }
 
-// ============================================================
-// 관리자: 전체 현황 로드
-// ============================================================
-async function loadAdmin() {
-  document.getElementById('admin-list').innerHTML =
-    '<div class="loading"><span class="spinner"></span>불러오는 중...</div>';
-  try {
-    const res = await apiFetch({ action: 'all' });
-    if (res.error) throw new Error(res.error);
-    allRecords = res.records || [];
-    renderAdminList();
-  } catch(e) {
-    document.getElementById('admin-list').innerHTML =
-      `<div class="notice notice-err">오류: ${e.message}</div>`;
+function saveStep1(data) {
+  return jsonResponse(saveStep1Raw(data));
+}
+
+// ------------------------------------------------
+// 2단계: 반납 & 지출 신고 저장
+// ------------------------------------------------
+function saveStep2Raw(data) {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === data.id) {
+      sheet.getRange(i + 1, 7).setValue(data.returnTime);
+      sheet.getRange(i + 1, 8).setValue(data.useDate);
+      sheet.getRange(i + 1, 9).setValue(data.amount);
+      sheet.getRange(i + 1, 10).setValue(data.merchant);
+      sheet.getRange(i + 1, 11).setValue(data.project);
+      sheet.getRange(i + 1, 12).setValue(2);
+      return { success: true };
+    }
   }
+  return { error: '해당 대여 신청서를 찾을 수 없습니다.' };
 }
 
-function renderAdminList() {
-  const total    = allRecords.length;
-  const complete = allRecords.filter(r => r.step === 2).length;
-  document.getElementById('st-total').textContent    = total;
-  document.getElementById('st-complete').textContent = complete;
-  document.getElementById('st-pending').textContent  = total - complete;
+function saveStep2(data) {
+  return jsonResponse(saveStep2Raw(data));
+}
 
-  const list = document.getElementById('admin-list');
-  if (!total) {
-    list.innerHTML = '<p style="font-size:13px;color:#86868b">접수된 대여 신청이 없습니다.</p>';
-    return;
+// ------------------------------------------------
+// 이름 + 카드번호로 1단계 완료 건 검색
+// ------------------------------------------------
+function searchRaw(name, card) {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (r[1] === name && String(r[3]) === String(card) && Number(r[11]) === 1) {
+      results.push(rowToObj(r));
+    }
   }
-  list.innerHTML = [...allRecords].reverse().map(r => `
-    <div class="list-row">
-      <div>
-        <div class="list-name">${r.name} <span style="font-weight:400;color:#86868b">(${r.lab})</span></div>
-        <div class="list-detail">
-          카드 ${r.card} · 대여 ${fmtDT(r.rent)}
-          ${r.step === 2 ? ` · ${r.useDate} · ${Number(r.amount).toLocaleString()}원 · ${r.merchant}` : ''}
-        </div>
-      </div>
-      <span class="badge ${r.step===2 ? (r.matched?'badge-ok':'badge-warn') : 'badge-err'}">
-        ${r.step===2 ? (r.matched ? '대조완료' : '신고완료') : '대여중'}
-      </span>
-    </div>`).join('');
+  return { results: results };
 }
 
-// ============================================================
-// 관리자: 포탈 대조
-// ============================================================
-async function runMatch() {
-  const raw = document.getElementById('portal-input').value.trim();
-  if (!raw) { alert('포탈 미신청 내역을 입력해주세요.'); return; }
+function search(name, card) {
+  return jsonResponse(searchRaw(name, card));
+}
 
-  const portalItems = raw.split('\n').filter(l=>l.trim()).map(line => {
-    const p = line.split(',').map(s => s.trim());
-    return { date: p[0]||'', amount: parseInt((p[1]||'').replace(/[^0-9]/g,'')||'0'), merchant: p[2]||'' };
+// ------------------------------------------------
+// 전체 레코드 조회 (관리자용)
+// ------------------------------------------------
+function getAllRecordsRaw() {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  const records = [];
+  for (let i = 1; i < rows.length; i++) {
+    records.push(rowToObj(rows[i]));
+  }
+  return { records: records };
+}
+
+function getAllRecords() {
+  return jsonResponse(getAllRecordsRaw());
+}
+
+// ------------------------------------------------
+// 대조 결과 matched 상태 업데이트
+// ------------------------------------------------
+function saveMatchRaw(data) {
+  const sheet = getSheet();
+  const rows = sheet.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    sheet.getRange(i + 1, 13).setValue(false);
+  }
+  data.matchedIds.forEach(function(id) {
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][0] === id) {
+        sheet.getRange(i + 1, 13).setValue(true);
+        break;
+      }
+    }
   });
-
-  // 매칭 로직
-  const workRecords = allRecords.map(r => ({...r, matched:false}));
-  unmatchedPortalItems = [];
-
-  portalItems.forEach(p => {
-    const idx = workRecords.findIndex(r =>
-      r.step === 2 && !r.matched &&
-      String(r.useDate) === p.date &&
-      Math.abs(Number(r.amount) - p.amount) < 500
-    );
-    if (idx >= 0) workRecords[idx].matched = true;
-    else unmatchedPortalItems.push(p);
-  });
-
-  // 서버에 matched 상태 저장
-  const matchedIds = workRecords.filter(r => r.matched).map(r => r.id);
-  try {
-    await apiPost({ action:'match', matchedIds });
-    allRecords = workRecords;
-  } catch(e) {
-    console.warn('matched 저장 실패:', e);
-  }
-
-  // 결과 렌더링
-  const rc = document.getElementById('result-card');
-  rc.style.display = 'block';
-
-  let html = workRecords.filter(r => r.step === 2).map(r => `
-    <div class="list-row">
-      <div>
-        <div class="list-name">${r.name} <span style="font-weight:400;color:#86868b">(${r.lab})</span></div>
-        <div class="list-detail">${r.useDate} · ${Number(r.amount).toLocaleString()}원 · ${r.merchant}</div>
-      </div>
-      <span class="badge ${r.matched ? 'badge-ok' : 'badge-err'}">${r.matched ? '매칭' : '포탈미신청'}</span>
-    </div>`).join('');
-
-  if (unmatchedPortalItems.length) {
-    html += `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0">
-      <div style="font-size:12px;font-weight:600;color:#c0392b;margin-bottom:8px">포탈에만 있고 사용 신고 미접수 — 독촉 필요</div>`;
-    unmatchedPortalItems.forEach(p => {
-      html += `<div class="list-row">
-        <div>
-          <div class="list-name" style="color:#c0392b">${p.date} · ${p.amount.toLocaleString()}원 · ${p.merchant}</div>
-          <div class="list-detail">관리대장에서 사용자 확인 후 개별 연락 필요</div>
-        </div>
-        <span class="badge badge-err">미신고</span>
-      </div>`;
-    });
-    html += '</div>';
-  }
-
-  document.getElementById('match-list').innerHTML = html;
-  renderAdminList();
+  return { success: true };
 }
 
-function copyUnmatched() {
-  const lines = unmatchedPortalItems.map(p =>
-    `${p.date}  ${p.amount.toLocaleString()}원  ${p.merchant}`
-  );
-  const text = '=== 포탈 미신고 내역 ===\n' + (lines.length ? lines.join('\n') : '(없음)');
-  navigator.clipboard.writeText(text).then(() => alert('복사되었습니다.'));
+function saveMatch(data) {
+  return jsonResponse(saveMatchRaw(data));
 }
-</script>
-</body>
-</html>
+
+// ------------------------------------------------
+// 헬퍼: 행 배열 → 객체 변환
+// ------------------------------------------------
+function rowToObj(r) {
+  return {
+    id:         r[0],
+    name:       r[1],
+    lab:        r[2],
+    card:       r[3],
+    cert:       r[4],
+    rent:       r[5],
+    returnTime: r[6],
+    useDate:    r[7],
+    amount:     r[8],
+    merchant:   r[9],
+    project:    r[10],
+    step:       Number(r[11]),
+    matched:    r[12] === true || r[12] === 'TRUE',
+    createdAt:  r[13]
+  };
+}
+
+// ------------------------------------------------
+// 헬퍼: JSON 응답 생성 (JSONP 지원)
+// ------------------------------------------------
+function jsonResponse(obj, e) {
+  const callback = e && e.parameter && e.parameter.callback;
+  if (callback) {
+    return ContentService
+      .createTextOutput(callback + '(' + JSON.stringify(obj) + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
