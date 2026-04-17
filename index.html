@@ -305,18 +305,16 @@ async function apiFetch(params) {
   const url = getApiUrl();
   if (!url) { alert('Apps Script URL이 설정되지 않았습니다.'); throw new Error('No API URL'); }
   const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${url}?${qs}`);
+  const res = await fetch(`${url}?${qs}`, { redirect: 'follow' });
   return res.json();
 }
 
 async function apiPost(body) {
   const url = getApiUrl();
   if (!url) { alert('Apps Script URL이 설정되지 않았습니다.'); throw new Error('No API URL'); }
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
-  });
+  // Apps Script CORS 우회: GET 방식으로 데이터 전송
+  const params = new URLSearchParams({ payload: JSON.stringify(body) }).toString();
+  const res = await fetch(`${url}?${params}`, { redirect: 'follow' });
   return res.json();
 }
 
